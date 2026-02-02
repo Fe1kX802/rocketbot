@@ -54,8 +54,8 @@ The more often users send the same message or sticker, the higher the probabilit
 
 ## Commands
 
-/setfrequency n sets the number of user messages after which the bot will automatically send a message or sticker, allowing per-chat configuration
-/sendtext forces the bot to immediately send a text message using weighted random selection from stored messages
-/sendsticker forces the bot to immediately send a sticker from the stored stickers
-/cleardb completely clears the bot database, requiring a one-time 8-digit password printed to the host terminal, which the user must reply with to confirm the deletion.
+- /setfrequency n sets the number of user messages after which the bot will automatically send a message or sticker, allowing per-chat configuration
+- /sendtext forces the bot to immediately send a text message using weighted random selection from stored messages
+- /sendsticker forces the bot to immediately send a sticker from the stored stickers
+- /cleardb completely clears the bot database, requiring a one-time 8-digit password printed to the host terminal, which the user must reply with to confirm the deletion.
 
