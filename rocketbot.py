@@ -6,6 +6,7 @@ import secrets
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import sys
 
 import aiosqlite
 from aiogram import Bot, Dispatcher, F
@@ -27,7 +28,8 @@ bot = Bot(TOKEN)
 dp = Dispatcher()
 
 # ------------------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ -------------------
-pending_clear = {}     # chat_id -> password
+pending_clear = {}     # chat_id -> password для /clearbd
+pending_stop = {}      # chat_id -> password для /stop
 started_chats = set()  # чаты, где бот уже поздоровался
 
 # ------------------- ЛОГИ -------------------
@@ -240,33 +242,61 @@ async def cmd_cleardb(message: Message):
     )
 
 
-@dp.message(F.reply_to_message)
-async def handle_clear_reply(message: Message):
+@dp.message(Command("stop"))
+async def cmd_stop(message: Message):
     chat_id = message.chat.id
 
-    if chat_id not in pending_clear:
-        return
+    password = "".join(str(secrets.randbelow(10)) for _ in range(4))
+    pending_stop[chat_id] = password
+
+    print(f"[STOPBOT] chat_id={chat_id} password={password}")
+
+    await bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"[STOPBOT] chat_id={chat_id} password={password}"
+    )
+
+    await message.answer(
+        "Для остановки бота в этом чате ответьте на это сообщение четырёхзначным паролем."
+    )
+
+
+@dp.message(F.reply_to_message)
+async def handle_clear_or_stop_reply(message: Message):
+    chat_id = message.chat.id
     if not message.text:
         return
 
-    expected = pending_clear.get(chat_id)
+    # обработка очистки базы
+    if chat_id in pending_clear:
+        expected = pending_clear[chat_id]
+        if message.text.strip() == expected:
+            async with aiosqlite.connect(DB_PATH) as db:
+                await db.execute("DELETE FROM messages")
+                await db.execute("DELETE FROM settings")
+                await db.commit()
 
-    if message.text.strip() != expected:
-        del pending_clear[chat_id]
-        return
+            del pending_clear[chat_id]
 
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM messages")
-        await db.execute("DELETE FROM settings")
-        await db.commit()
+            log_event("database_cleared", {"chat_id": chat_id})
+            await message.answer("База данных очищена.")
+        else:
+            del pending_clear[chat_id]
 
-    del pending_clear[chat_id]
+    # обработка остановки бота
+    elif chat_id in pending_stop:
+        expected = pending_stop[chat_id]
+        if message.text.strip() == expected:
+            if chat_id in started_chats:
+                started_chats.remove(chat_id)
 
-    log_event("database_cleared", {
-        "chat_id": chat_id
-    })
+            del pending_stop[chat_id]
 
-    await message.answer("База данных очищена.")
+            log_event("bot_stopped_in_chat", {"chat_id": chat_id})
+            await message.answer("Бот остановлен в этом чате.")
+            sys.exit(0)
+        else:
+            del pending_stop[chat_id]
 
 
 @dp.message(Command("sethello"))
