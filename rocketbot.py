@@ -12,7 +12,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import Command
 
-
+# ------------------- TOKEN -------------------
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 DB_PATH = "messages.db"
@@ -25,12 +25,11 @@ if not TOKEN:
 bot = Bot(TOKEN)
 dp = Dispatcher()
 
+# ------------------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ -------------------
 pending_clear = {}     # chat_id -> password
 started_chats = set()  # чаты, где бот уже поздоровался
 
-
-# ---------- ЛОГИ ----------
-
+# ------------------- ЛОГИ -------------------
 def log_event(event_type: str, data: dict):
     record = {
         "ts": datetime.utcnow().isoformat(),
@@ -44,8 +43,7 @@ def log_event(event_type: str, data: dict):
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-# ---------- БАЗА ДАННЫХ ----------
-
+# ------------------- БАЗА ДАННЫХ -------------------
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
@@ -64,6 +62,12 @@ async def init_db():
                 counter INTEGER DEFAULT 0
             )
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS greetings (
+                chat_id INTEGER PRIMARY KEY,
+                text TEXT
+            )
+        """)
         await db.commit()
 
 
@@ -76,8 +80,7 @@ async def cleanup_db():
         await db.commit()
 
 
-# ---------- УТИЛИТЫ ----------
-
+# ------------------- УТИЛИТЫ -------------------
 async def get_settings(chat_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
@@ -143,8 +146,30 @@ async def weighted_choice(chat_id: int, msg_type: str):
     return random.choice(population)
 
 
-# ---------- КОМАНДЫ ----------
+# ------------------- ПРИВЕТСТВИЕ -------------------
+async def set_hello(chat_id: int, text: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO greetings (chat_id, text)
+            VALUES (?, ?)
+            ON CONFLICT(chat_id) DO UPDATE SET text = ?
+        """, (chat_id, text, text))
+        await db.commit()
 
+
+async def get_hello(chat_id: int) -> str:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "SELECT text FROM greetings WHERE chat_id = ?",
+            (chat_id,)
+        )
+        row = await cur.fetchone()
+        if row:
+            return row[0]
+    return "Привет всем!"
+
+
+# ------------------- КОМАНДЫ -------------------
 @dp.message(Command("setfrequency"))
 async def cmd_setfrequency(message: Message):
     parts = message.text.split()
@@ -221,8 +246,19 @@ async def handle_clear_reply(message: Message):
     await message.answer("База данных очищена.")
 
 
-# ---------- ОБРАБОТКА СООБЩЕНИЙ ----------
+@dp.message(Command("sethello"))
+async def cmd_sethello(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        return
+    text = parts[1].strip()
+    if not text:
+        return
+    await set_hello(message.chat.id, text)
+    await message.answer(f"Hello message updated to:\n{text}")
 
+
+# ------------------- ОБРАБОТКА СООБЩЕНИЙ -------------------
 @dp.message(F.chat.type.in_({"group", "supergroup"}))
 async def handle_group_messages(message: Message):
     if message.from_user and message.from_user.is_bot:
@@ -232,10 +268,12 @@ async def handle_group_messages(message: Message):
 
     if chat_id not in started_chats:
         started_chats.add(chat_id)
-        await message.answer("Привет всем!")
+        hello_text = await get_hello(chat_id)
+        await message.answer(hello_text)
         log_event("bot_started_in_chat", {
             "chat_id": chat_id,
-            "chat_title": message.chat.title
+            "chat_title": message.chat.title,
+            "hello_text": hello_text
         })
 
     await cleanup_db()
@@ -270,8 +308,7 @@ async def handle_group_messages(message: Message):
     await update_counter(chat_id, counter)
 
 
-# ---------- ЗАПУСК ----------
-
+# ------------------- ЗАПУСК -------------------
 async def main():
     log_event("bot_process_started", {"status": "ok"})
     await init_db()
