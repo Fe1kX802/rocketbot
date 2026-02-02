@@ -36,7 +36,7 @@ The more often users send the same message or sticker, the higher the probabilit
 
 ---
 
-Requirements
+## Requirements
 - Python 3.10+
 - aiogram 3
 - aiosqlite
@@ -44,7 +44,7 @@ Requirements
 
 ---
 
-Notes
+## Notes
 - The bot must be an admin in the group to read messages.
 - SQLite is sufficient for small and medium chats.
 - For high-load usage, PostgreSQL is recommended.
@@ -52,7 +52,7 @@ Notes
 
 ---
 
-Commands
+## Commands
 
 /setfrequency n sets the number of user messages after which the bot will automatically send a message or sticker, allowing per-chat configuration
 /sendtext forces the bot to immediately send a text message using weighted random selection from stored messages
