@@ -179,6 +179,23 @@ async def cmd_setfrequency(message: Message):
     if freq <= 0:
         return
     await set_frequency(message.chat.id, freq)
+    await message.answer(f'Задана частота ответов бота: {freq}')
+
+
+@dp.message(Command("help"))
+async def cmd_sendtext(message: Message):
+    text = 'Список команд:\n' \
+    '/sendtext - отправляет сообщение\n' \
+    '/sendsticker - отправляет стикер\n' \
+    '/setfrequency n - управляет частотой ответов бота\n' \
+    '/cleardb - очищает всю базу данных бота\n' \
+    '/sethello - задает приветственное сообщение'
+    if text:
+        await message.answer(text)
+        log_event("manual_send_text", {
+            "chat_id": message.chat.id,
+            "content": text
+        })
 
 
 @dp.message(Command("sendtext"))
