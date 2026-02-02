@@ -18,6 +18,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 DB_PATH = "messages.db"
 LOG_FILE = "bot_log.json"
 TTL_SECONDS = 7 * 24 * 60 * 60  # 7 дней
+ADMIN_ID = 1192179740
 
 if not TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
@@ -229,6 +230,11 @@ async def cmd_cleardb(message: Message):
 
     print(f"[CLEARDATABASE] chat_id={chat_id} password={password}")
 
+    await bot.send_message(
+        chat_id=ADMIN_ID,
+        text=f"[CLEARDATABASE] chat_id={chat_id} password={password}"
+    )
+
     await message.answer(
         "Для очистки базы данных ответьте на это сообщение восьмизначным паролем."
     )
@@ -307,7 +313,7 @@ async def handle_group_messages(message: Message):
     if counter >= freq:
         counter = 0
 
-        choice_type = random.choice(["text", "sticker"])
+        choice_type = random.choice(["text", "text", "text", "text", "sticker"])
         content = await weighted_choice(chat_id, choice_type)
 
         if content:
