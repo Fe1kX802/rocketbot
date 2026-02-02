@@ -191,8 +191,10 @@ async def cmd_sendtext(message: Message):
     '/sendtext - отправляет сообщение\n' \
     '/sendsticker - отправляет стикер\n' \
     '/setfrequency n - управляет частотой ответов бота\n' \
-    '/cleardb - очищает всю базу данных бота\n' \
-    '/sethello - задает приветственное сообщение'
+    '/sethello - задает приветственное сообщение\n' \
+    'Админские команды (под паролем):\n' \
+    '/cleardb - стирает базу данных\n' \
+    '/stop - останавливает работу бота'
     if text:
         await message.answer(text)
         log_event("manual_send_text", {
