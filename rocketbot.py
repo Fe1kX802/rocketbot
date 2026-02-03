@@ -8,9 +8,14 @@ import os
 from dotenv import load_dotenv
 import sys
 
+
+#           !!!---!!!   ДОБАВЬ /log ПОД ПАРОЛЕМ   !!!---!!!
+
+
+
 import aiosqlite
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command
 
 # ------------------- TOKEN -------------------
@@ -192,9 +197,11 @@ async def cmd_sendtext(message: Message):
     '/sendsticker - отправляет стикер\n' \
     '/setfrequency n - управляет частотой ответов бота\n' \
     '/sethello - задает приветственное сообщение\n' \
+    '\n' \
     'Админские команды (под паролем):\n' \
     '/cleardb - стирает базу данных\n' \
-    '/stop - останавливает работу бота'
+    '/stop - останавливает работу бота \n' \
+    '/getlog - отправляет полный файл логов в лс админу'
     if text:
         await message.answer(text)
         log_event("manual_send_text", {
@@ -223,6 +230,18 @@ async def cmd_sendsticker(message: Message):
             "chat_id": message.chat.id,
             "file_id": sticker
         })
+
+
+@dp.message(Command("getlog"))
+async def cmd_getlog(message: Message):
+    await bot.send_document(
+        chat_id=message.from_user.id,
+        document=FSInputFile("bot_log.json")
+    )
+    log_event("send_logs", {
+        "chat_id": message.chat.id,
+        "content": "bot_log.json"
+    })
 
 
 @dp.message(Command("cleardb"))
