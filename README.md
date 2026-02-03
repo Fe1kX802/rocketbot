@@ -1,57 +1,61 @@
-Telegram-бот случайных сообщений с весами (aiogram)
+# Telegram Weighted Random Message Bot (aiogram)
 
-Это Telegram-бот для групп, написанный на Python с использованием aiogram 3.
-Бот отслеживает сообщения в групповых чатах и периодически отправляет случайное сообщение или стикер на основе реальной частоты активности пользователей.
+This is a Telegram group bot written in **Python** using **aiogram 3**.  
+The bot observes messages in group chats and periodically sends a random message or sticker based on real user activity frequency.
 
-Чем чаще пользователи отправляют одно и то же сообщение или стикер, тем выше вероятность того, что бот отправит именно его.
+The more often users send the same message or sticker, the higher the probability that the bot will send it.
 
-⸻
+---
 
-Возможности
-	•	Работает в группах и супергруппах
-	•	Считывает все сообщения пользователей (текст и стикеры)
-	•	Автоматически отправляет сообщение каждые N сообщений пользователей
-	•	Взвешенный случайный выбор:
-	•	Сообщения, встречающиеся чаще, имеют более высокий шанс выбора
-	•	Может отправлять как текстовые сообщения, так и стикеры
-	•	Хранит данные не более 7 дней (автоматическая очистка)
-	•	Настройки отдельно для каждого чата
-	•	Полное JSON-логирование (в терминал и файл)
-	•	Безопасная очистка базы данных с подтверждением одноразовым паролем
+## Features
 
-⸻
+- Works in **groups and supergroups**
+- Reads all user messages (text and stickers)
+- Sends a message automatically every **N user messages**
+- **Weighted random selection**:
+- Messages that appear more often have higher probability
+- Can send either **text messages or stickers**
+- Stores data **no longer than 7 days** (automatic cleanup)
+- Per-chat configuration
+- Full **JSON logging** (terminal + file)
+- Secure database wipe with one-time password confirmation
 
-Принцип работы
-	1.	Пользователи общаются в группе в обычном режиме.
-	2.	Бот сохраняет:
-	•	Текстовые сообщения
-	•	file_id стикеров
-	3.	После каждых N сообщений (настраивается) бот:
-	•	Случайным образом выбирает между текстом и стикером
-	•	Отправляет один элемент с учётом весовой вероятности
-	4.	Старые сообщения (старше 7 дней) автоматически удаляются.
-	5.	При первой активности после перезапуска бот отправляет приветственное сообщение (настраивается).
+---
 
-⸻
+## How It Works
 
-Требования
-	•	Python 3.10+
-	•	aiogram 3
-	•	aiosqlite
-	•	python-dotenv (если используется .env для токена)
+1. Users communicate normally in a group.
+2. The bot stores:
+   - Text messages
+   - Sticker `file_id`s
+3. After every `N` messages (configurable), the bot:
+   - Randomly chooses between text or sticker
+   - Sends one item using weighted probability
+4. Old messages (older than 7 days) are automatically removed.
+5. On first activity after restart, the bot sends a greeting message (configurable)
 
-⸻
+---
 
-Примечания
-	•	Бот должен быть администратором группы, чтобы читать сообщения.
-	•	SQLite подходит для малых и средних чатов.
-	•	Для высокой нагрузки рекомендуется PostgreSQL.
-	•	Токен следует хранить в переменных окружения и исключать из Git.
+## Requirements
+- Python 3.10+
+- aiogram 3
+- aiosqlite
+- python-dotenv (if using .env for token)
 
-⸻
+---
 
-Команды
-	•	/setfrequency n — устанавливает количество сообщений пользователей, после которых бот автоматически отправляет сообщение или стикер (настройка для конкретного чата)
-	•	/sendtext — принудительно отправляет текстовое сообщение с использованием взвешенного случайного выбора из сохранённых сообщений
-	•	/sendsticker — принудительно отправляет стикер из сохранённых стикеров
-	•	/cleardb — полностью очищает базу данных бота; требует подтверждения одноразовым 8-значным паролем, который выводится в терминал хоста и должен быть отправлен пользователем в ответ для подтверждения удаления
+## Notes
+- The bot must be an admin in the group to read messages.
+- SQLite is sufficient for small and medium chats.
+- For high-load usage, PostgreSQL is recommended.
+- Token should be stored in environment variables and excluded from Git.
+
+---
+
+## Commands
+
+- /setfrequency n sets the number of user messages after which the bot will automatically send a message or sticker, allowing per-chat configuration
+- /sendtext forces the bot to immediately send a text message using weighted random selection from stored messages
+- /sendsticker forces the bot to immediately send a sticker from the stored stickers
+- /cleardb completely clears the bot database, requiring a one-time 8-digit password printed to the host terminal, which the user must reply with to confirm the deletion.
+
