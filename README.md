@@ -32,7 +32,7 @@ The more often users send the same message or sticker, the higher the probabilit
    - Randomly chooses between text or sticker
    - Sends one item using weighted probability
 4. Old messages (older than 7 days) are automatically removed.
-5. On first activity after restart, the bot sends a greeting message.
+5. On first activity after restart, the bot sends a greeting message (configurable)
 
 ---
 
