@@ -9,10 +9,6 @@ from dotenv import load_dotenv
 import sys
 
 
-#           !!!---!!!   ДОБАВЬ /log ПОД ПАРОЛЕМ   !!!---!!!
-
-
-
 import aiosqlite
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, FSInputFile
@@ -24,7 +20,8 @@ TOKEN = os.getenv("BOT_TOKEN")
 DB_PATH = "messages.db"
 LOG_FILE = "bot_log.json"
 TTL_SECONDS = 7 * 24 * 60 * 60  # 7 дней
-ADMIN_ID = 1192179740
+PRIME_ADMIN_ID = 1192179740
+ADMIN_IDS = []
 
 if not TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
@@ -196,7 +193,7 @@ async def cmd_sendtext(message: Message):
     '/sendtext - отправляет сообщение\n' \
     '/sendsticker - отправляет стикер\n' \
     '/setfrequency n - управляет частотой ответов бота\n' \
-    '/sethello - задает приветственное сообщение\n' \
+    '/sethello [ТЕКСТ] - задает приветственное сообщение с новым текстом\n' \
     '\n' \
     'Админские команды (под паролем):\n' \
     '/cleardb - стирает базу данных\n' \
@@ -254,7 +251,7 @@ async def cmd_cleardb(message: Message):
     print(f"[CLEARDATABASE] chat_id={chat_id} password={password}")
 
     await bot.send_message(
-        chat_id=ADMIN_ID,
+        chat_id=PRIME_ADMIN_ID,
         text=f"[CLEARDATABASE] chat_id={chat_id} password={password}"
     )
 
@@ -273,7 +270,7 @@ async def cmd_stop(message: Message):
     print(f"[STOPBOT] chat_id={chat_id} password={password}")
 
     await bot.send_message(
-        chat_id=ADMIN_ID,
+        chat_id=PRIME_ADMIN_ID,
         text=f"[STOPBOT] chat_id={chat_id} password={password}"
     )
 
