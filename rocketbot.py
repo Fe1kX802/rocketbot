@@ -7,6 +7,9 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import sys
+from joker import get_random_joke
+import asyncio
+
 
 
 import aiosqlite
@@ -30,22 +33,35 @@ bot = Bot(TOKEN)
 dp = Dispatcher()
 
 # ------------------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ -------------------
-pending_clear = {}     # chat_id -> password для /clearbd
-pending_stop = {}      # chat_id -> password для /stop
-started_chats = set()  # чаты, где бот уже поздоровался
+pending_clear = {}        # chat_id -> password для /clearbd
+pending_stop = {}         # chat_id -> password для /stop
+spam_enabled = False      
+pending_toggle_spam = {}  # chat_id -> password
+started_chats = set()     # чаты, где бот уже поздоровался
 
 # ------------------- ЛОГИ -------------------
 def log_event(event_type: str, data: dict):
+    BOLD = "\033[1m"
+    RESET = "\033[0m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[34m"
+
     record = {
         "ts": datetime.utcnow().isoformat(),
         "event": event_type,
         "data": data
     }
 
-    print(json.dumps(record, ensure_ascii=False))
+    ts_colored = f"{BOLD}{GREEN}{record['ts']}{RESET}"
+    event_colored = f"{BOLD}{YELLOW}{record['event']}{RESET}"
+    data_colored = f"{BOLD}{BLUE}{json.dumps(record['data'], ensure_ascii=False)}{RESET}"
+
+    print(f"{ts_colored} | {event_colored} | {data_colored}")
 
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
 
 
 # ------------------- БАЗА ДАННЫХ -------------------
@@ -187,6 +203,60 @@ async def cmd_setfrequency(message: Message):
     await message.answer(f'Задана частота ответов бота: {freq}')
 
 
+@dp.message(Command("spam"))
+async def cmd_spam(message: Message):
+    if not spam_enabled:
+        await message.answer("Функция отключена")
+        return
+
+    parts = message.text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        return
+
+    count = int(parts[1])
+
+    for _ in range(count):
+        choice = random.choice(["text", "text", "text", "text", "sticker"])
+        if choice == "text":
+            text = await weighted_choice(message.chat.id, "text")
+            if text:
+                await message.answer(text)
+        else:
+            sticker = await weighted_choice(message.chat.id, "sticker")
+            if sticker:
+                await message.answer_sticker(sticker)
+
+
+@dp.message(Command("toggle_spam"))
+async def cmd_toggle_spam(message: Message):
+    chat_id = message.chat.id
+    password = "".join(str(secrets.randbelow(10)) for _ in range(4))
+    pending_toggle_spam[chat_id] = password
+
+    await bot.send_message(
+        PRIME_ADMIN_ID,
+        f"[TOGGLESPAM] chat_id={chat_id} password={password}"
+    )
+
+    await message.answer(
+        "Одноразовый пароль отправлен администратору. "
+        "Ответь на это сообщение паролем для переключения spam."
+    )
+
+
+
+@dp.message(Command("joke"))
+async def cmd_joke(message: Message):
+    loop = asyncio.get_running_loop()
+    joke = await loop.run_in_executor(None, get_random_joke)
+
+    if not joke:
+        await message.answer("Не удалось получить шутку(")
+        return
+
+    await message.answer(joke)
+
+
 @dp.message(Command("help"))
 async def cmd_sendtext(message: Message):
     text = 'Список команд:\n' \
@@ -194,10 +264,13 @@ async def cmd_sendtext(message: Message):
     '/sendsticker - отправляет стикер\n' \
     '/setfrequency n - управляет частотой ответов бота\n' \
     '/sethello [ТЕКСТ] - задает приветственное сообщение с новым текстом\n' \
+    '/spam n - бот отправит n рандомных сообщений\n' \
+    '/joke - бот отправит рандомную шутку\n' \
     '\n' \
     'Админские команды (под паролем):\n' \
     '/cleardb - стирает базу данных\n' \
     '/stop - останавливает работу бота \n' \
+    '/toggle_spam - переключение функции spam (активна/отключена)\n' \
     '/getlog - отправляет полный файл логов в лс админу'
     if text:
         await message.answer(text)
@@ -280,41 +353,61 @@ async def cmd_stop(message: Message):
 
 
 @dp.message(F.reply_to_message)
-async def handle_clear_or_stop_reply(message: Message):
+async def handle_clear_stop_toggle_spam_reply(message: Message):
     chat_id = message.chat.id
     if not message.text:
         return
 
-    # обработка очистки базы
+    text = message.text.strip()
+
+    # ---------- очистка базы ----------
     if chat_id in pending_clear:
         expected = pending_clear[chat_id]
-        if message.text.strip() == expected:
+        del pending_clear[chat_id]
+
+        if text == expected:
             async with aiosqlite.connect(DB_PATH) as db:
                 await db.execute("DELETE FROM messages")
                 await db.execute("DELETE FROM settings")
                 await db.commit()
 
-            del pending_clear[chat_id]
-
             log_event("database_cleared", {"chat_id": chat_id})
             await message.answer("База данных очищена.")
-        else:
-            del pending_clear[chat_id]
+        return
 
-    # обработка остановки бота
-    elif chat_id in pending_stop:
+    # ---------- остановка бота ----------
+    if chat_id in pending_stop:
         expected = pending_stop[chat_id]
-        if message.text.strip() == expected:
+        del pending_stop[chat_id]
+
+        if text == expected:
             if chat_id in started_chats:
                 started_chats.remove(chat_id)
-
-            del pending_stop[chat_id]
 
             log_event("bot_stopped_in_chat", {"chat_id": chat_id})
             await message.answer("Бот остановлен в этом чате.")
             sys.exit(0)
-        else:
-            del pending_stop[chat_id]
+        return
+
+    # ---------- toggle_spam ----------
+    if chat_id in pending_toggle_spam:
+        expected = pending_toggle_spam[chat_id]
+        del pending_toggle_spam[chat_id]
+
+        if text == expected:
+            global spam_enabled
+            spam_enabled = not spam_enabled
+
+            state = "включена" if spam_enabled else "отключена"
+
+            log_event("toggle_spam", {
+                "chat_id": chat_id,
+                "enabled": spam_enabled
+            })
+
+            await message.answer(f"Функция spam теперь {state}")
+        return
+
 
 
 @dp.message(Command("sethello"))
